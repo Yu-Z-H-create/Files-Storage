@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+
+<head>
+
+<meta charset="utf-8" />
+
+<title>PDF 在线预览</title>
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<style>
+
+html, body {
+
+margin: 0;
+
+padding: 0;
+
+width: 100%;
+
+height: 100%;
+
+overflow: hidden; /* 防止页面滚动 */
+
+}
+
+/* 顶部工具栏样式 */
+
+.toolbar {
+
+height: 48px;
+
+background: #2c3e50;
+
+color: #fff;
+
+display: flex;
+
+align-items: center;
+
+justify-content: space-between;
+
+padding: 0 16px;
+
+box-sizing: border-box;
+
+}
+
+.toolbar a {
+
+color: #fff;
+
+text-decoration: none;
+
+font-size: 14px;
+
+margin-left: 10px;
+
+}
+
+/* iframe 铺满剩余空间 */
+
+iframe {
+
+width: 100%;
+
+height: calc(100vh - 48px); /* 减去工具栏高度 */
+
+border: none;
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="toolbar">
+
+PDF 预览
+
+<div>
+
+<a href="" id="openRaw" target="_blank">在新窗口打开</a>
+
+</div>
+
+</div>
+
+<iframe id="viewer" src="" allowfullscreen></iframe>
+
+<script>
+
+(function () {
+
+// 1. 解析 URL 参数
+
+const params = new URLSearchParams(window.location.search);
+
+let pdfPath = params.get('pdf');
+
+ // 2. 如果没有参数，则使用默认 PDF
+if (!pdfPath) {
+    pdfPath = "阳光跑学生端操作手册.pdf[](@replace=10001)"; // 改成你仓库里任意一个 PDF 文件名
+}
+
+// 3. 构建 PDF 文件的完整路径
+// 假设你的仓库结构为：
+// your-repo/
+//   index.html
+//   xxx.pdf
+// 则 pdfURL 指向的是 GitHub Pages 上的 PDF 文件
+const pdfURL = pdfPath;
+
+// 4. 设置 iframe 的 src 以实现全屏预览
+// 使用 PDF.js 的 viewer 可以提供更稳定的预览体验
+const viewer = document.getElementById('viewer');
+viewer.src = `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(pdfURL)}`;
+
+// 5. 设置页面标题和“在新窗口打开”的链接
+document.getElementById('title').innerText = pdfPath;
+document.getElementById('openRaw').href = pdfURL;
+
+})();
+
+</script>
+
+</body>
+
+</html>
