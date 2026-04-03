@@ -1,133 +1,71 @@
 <!DOCTYPE html>
-
 <html lang="zh-CN">
-
 <head>
-
-<meta charset="utf-8" />
-
-<title>PDF 在线预览</title>
-
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-
-<style>
-
-html, body {
-
-margin: 0;
-
-padding: 0;
-
-width: 100%;
-
-height: 100%;
-
-overflow: hidden; /* 防止页面滚动 */
-
-}
-
-/* 顶部工具栏样式 */
-
-.toolbar {
-
-height: 48px;
-
-background: #2c3e50;
-
-color: #fff;
-
-display: flex;
-
-align-items: center;
-
-justify-content: space-between;
-
-padding: 0 16px;
-
-box-sizing: border-box;
-
-}
-
-.toolbar a {
-
-color: #fff;
-
-text-decoration: none;
-
-font-size: 14px;
-
-margin-left: 10px;
-
-}
-
-/* iframe 铺满剩余空间 */
-
-iframe {
-
-width: 100%;
-
-height: calc(100vh - 48px); /* 减去工具栏高度 */
-
-border: none;
-
-}
-
-</style>
-
+    <meta charset="UTF-8">
+    <title>PDF 在线预览</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* 让页面全屏，去掉滚动条 */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #333; /* 深色背景 */
+        }
+        
+        /* 让 iframe 占满整个屏幕 */
+        #pdfViewer {
+            width: 100vw;
+            height: 100vh;
+            border: none;
+            display: block;
+        }
+        
+        /* 隐藏顶部标题栏（可选，为了更干净的预览） */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: #2c3e50;
+            color: white;
+            padding: 5px 10px;
+            z-index: 1000;
+            font-family: sans-serif;
+            font-size: 14px;
+            text-align: center;
+        }
+    </style>
 </head>
-
 <body>
+    <div class="header">PDF 预览 - 阳光跑资料库</div>
+    
+    <!-- 这里是放 PDF 的地方 -->
+    <iframe id="pdfViewer" src=""></iframe>
 
-<div class="toolbar">
+    <script>
+        // 获取浏览器地址栏里的 ?pdf=后面的内容
+        const urlParams = new URLSearchParams(window.location.search);
+        let fileName = urlParams.get('pdf');
 
-PDF 预览
+        // 获取显示区域
+        const viewer = document.getElementById('pdfViewer');
 
-<div>
-
-<a href="" id="openRaw" target="_blank">在新窗口打开</a>
-
-</div>
-
-</div>
-
-<iframe id="viewer" src="" allowfullscreen></iframe>
-
-<script>
-
-(function () {
-
-// 1. 解析 URL 参数
-
-const params = new URLSearchParams(window.location.search);
-
-let pdfPath = params.get('pdf');
-
- // 2. 如果没有参数，则使用默认 PDF
-if (!pdfPath) {
-    pdfPath = "阳光跑学生端操作手册.pdf[](@replace=10001)"; // 改成你仓库里任意一个 PDF 文件名
-}
-
-// 3. 构建 PDF 文件的完整路径
-// 假设你的仓库结构为：
-// your-repo/
-//   index.html
-//   xxx.pdf
-// 则 pdfURL 指向的是 GitHub Pages 上的 PDF 文件
-const pdfURL = pdfPath;
-
-// 4. 设置 iframe 的 src 以实现全屏预览
-// 使用 PDF.js 的 viewer 可以提供更稳定的预览体验
-const viewer = document.getElementById('viewer');
-viewer.src = `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(pdfURL)}`;
-
-// 5. 设置页面标题和“在新窗口打开”的链接
-document.getElementById('title').innerText = pdfPath;
-document.getElementById('openRaw').href = pdfURL;
-
-})();
-
-</script>
-
+        if (fileName) {
+            // 1. 进行网址编码（防止中文乱码导致找不到文件）
+            let encodedName = encodeURIComponent(fileName);
+            
+            // 2. 拼凑出正确的 GitHub Raw 直链
+            // 注意：这里必须加上 https://raw.githubusercontent.com/ 前缀
+            let fileUrl = 'https://raw.githubusercontent.com/Yu-Z-H-create/Files-Storage/main/' + encodedName;
+            
+            // 3. 把链接塞进 iframe 里
+            viewer.src = fileUrl;
+        } else {
+            viewer.srcdoc = "<h1 style='color:white;text-align:center;margin-top:20%;'>请在链接后面加上 ?pdf=文件名.pdf</h1>";
+        }
+    </script>
 </body>
-
 </html>
