@@ -21,109 +21,21 @@
         .preview-container { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; margin-top: 40px; }
         iframe { width: 100%; height: 600px; border: none; }
         .preview-title { background: #f5f5f5; padding: 15px; font-weight: bold; }
-        
-        /* 访问限制提示样式 */
-        .access-limit { 
-            background: #fff3cd; 
-            border: 1px solid #ffeaa7; 
-            border-radius: 8px; 
-            padding: 20px; 
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        .limit-message { color: #856404; margin-bottom: 10px; }
-        .reset-info { font-size: 14px; color: #666; }
-        
-        /* 调试面板样式 */
-        .debug-panel {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            border-left: 4px solid #0366d6;
-        }
-        .debug-info {
-            font-family: monospace;
-            font-size: 12px;
-            background: #fff;
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 10px;
-            white-space: pre-wrap;
-        }
     </style>
     
     <script>
-        // ==================== 访问频率限制配置 ====================
-        const ACCESS_CONFIG = {
-            maxVisits: 10,
-            timeWindow: 2,
-            enableLimit: true
-        };
-        
-        // ==================== 文件名映射表 ====================
+        // 文件名映射表
         const FILE_MAPPING = {
             "doc_001.pdf": "阳光跑学生端操作手册.pdf",
             "doc_002.pdf": "阳光跑打卡操作指南.pdf"
         };
         
-        // ==================== 调试工具 ====================
-        window.enableDebug = true; // 设为 false 可关闭调试
-        
-        function logDebug(...args) {
-            if (window.enableDebug) {
-                console.log('[DEBUG]', ...args);
-            }
-        }
-        
-        // ==================== 文件路径处理 ====================
+        // 获取文件URL
         function getFileUrl(filename) {
-            // 处理中文文件名编码
-            const encodedName = encodeURI(filename);
-            logDebug('文件名处理:', filename, '→', encodedName);
-            return encodedName;
+            return encodeURI(filename);
         }
         
-        // ==================== 访问频率限制逻辑 ====================
-        function checkAccessLimit() {
-            if (!ACCESS_CONFIG.enableLimit) return true;
-            
-            const now = Date.now();
-            const storageKey = 'pdf_access_record';
-            const timeWindowMs = ACCESS_CONFIG.timeWindow * 60 * 60 * 1000;
-            
-            let record = JSON.parse(localStorage.getItem(storageKey) || '{"count":0,"firstAccess":0}');
-            
-            if (record.firstAccess === 0 || (now - record.firstAccess) > timeWindowMs) {
-                record = { count: 1, firstAccess: now };
-            } else {
-                record.count++;
-            }
-            
-            localStorage.setItem(storageKey, JSON.stringify(record));
-            logDebug('访问记录:', record);
-            
-            if (record.count > ACCESS_CONFIG.maxVisits) {
-                const resetTime = new Date(record.firstAccess + timeWindowMs);
-                const remainingTime = Math.ceil((resetTime - now) / 60000);
-                
-                const limitHtml = `
-                    <div class="access-limit">
-                        <h3 class="limit-message">访问频率限制</h3>
-                        <p>您在最近${ACCESS_CONFIG.timeWindow}小时内访问次数已超过${ACCESS_CONFIG.maxVisits}次。</p>
-                        <p class="reset-info">剩余等待时间：约${remainingTime}分钟后重置</p>
-                        <p class="reset-info"><small>提示：如需继续访问，请清除浏览器缓存或使用无痕模式</small></p>
-                    </div>
-                `;
-                
-                document.body.innerHTML = limitHtml;
-                return false;
-            }
-            
-            return true;
-        }
-        
-        // ==================== 显示文件列表 ====================
+        // 显示文件列表
         function displayFileList() {
             const pdfList = document.getElementById('pdfList');
             const fileEntries = Object.entries(FILE_MAPPING);
@@ -134,161 +46,39 @@
                 div.className = 'pdf-item';
                 div.innerHTML = `
                     <div class="pdf-title">${displayName}</div>
-                    <div>文件实际名称: <code>${obfuscatedName}</code></div>
                     <div style="margin-top: 10px;">
                         <a href="#" class="pdf-link" onclick="showPDF('${fileUrl}', '${displayName}')">在线预览</a>
                         <a href="${fileUrl}" class="pdf-link" target="_blank" style="margin-left:10px;">下载文件</a>
-                        <a href="#" class="pdf-link" onclick="testFileLink('${fileUrl}'); return false;" style="margin-left:10px; color:#666;">测试链接</a>
                     </div>
                 `;
                 pdfList.appendChild(div);
             });
             
+            // 默认显示第一个PDF
             if (fileEntries.length > 0) {
                 const [firstObfuscated, firstDisplay] = fileEntries[0];
                 showPDF(getFileUrl(firstObfuscated), firstDisplay);
             }
-            
-            showAccessInfo();
         }
         
-        // ==================== 显示PDF预览 ====================
+        // 显示PDF预览
         function showPDF(fileUrl, displayName) {
             const previewArea = document.getElementById('previewArea');
             const previewTitle = document.getElementById('previewTitle');
             const pdfViewer = document.getElementById('pdfViewer');
             
-            logDebug('加载PDF:', fileUrl);
             previewTitle.textContent = `正在预览: ${displayName}`;
             pdfViewer.src = fileUrl;
             previewArea.style.display = 'block';
             
-            // 监听iframe加载状态
-            pdfViewer.onload = () => {
-                logDebug('PDF加载成功:', fileUrl);
-                updateDebugInfo('✅ PDF加载成功');
-            };
-            
-            pdfViewer.onerror = (e) => {
-                logDebug('PDF加载失败:', fileUrl, e);
-                updateDebugInfo('❌ PDF加载失败，检查控制台');
-                previewTitle.innerHTML = `加载失败: ${displayName} <br><small style="color:red;">请检查文件名和路径</small>`;
-            };
-            
+            // 滚动到预览区域
             window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
             document.title = `预览: ${displayName} - PDF 文件库`;
         }
         
-        // ==================== 测试文件链接 ====================
-        function testFileLink(fileUrl) {
-            const testResult = document.getElementById('testResult');
-            const xhr = new XMLHttpRequest();
-            xhr.open('HEAD', fileUrl);
-            xhr.onload = () => {
-                alert(`✅ 文件存在\n状态: ${xhr.status}\n大小: ${xhr.getResponseHeader('content-length')} 字节`);
-                updateDebugInfo(`✅ 文件检查: ${fileUrl} 存在 (${xhr.status})`);
-            };
-            xhr.onerror = () => {
-                alert(`❌ 文件不存在或无法访问\nURL: ${fileUrl}`);
-                updateDebugInfo(`❌ 文件检查: ${fileUrl} 不存在`);
-            };
-            xhr.send();
-        }
-        
-        // ==================== 显示访问信息 ====================
-        function showAccessInfo() {
-            if (!ACCESS_CONFIG.enableLimit) return;
-            
-            const storageKey = 'pdf_access_record';
-            const record = JSON.parse(localStorage.getItem(storageKey) || '{"count":0,"firstAccess":0}');
-            
-            const infoDiv = document.createElement('div');
-            infoDiv.className = 'access-limit';
-            infoDiv.style.marginTop = '20px';
-            
-            if (record.firstAccess > 0) {
-                const elapsedTime = Date.now() - record.firstAccess;
-                const remainingTime = (ACCESS_CONFIG.timeWindow * 60 * 60 * 1000) - elapsedTime;
-                const remainingMinutes = Math.max(0, Math.ceil(remainingTime / 60000));
-                
-                infoDiv.innerHTML = `
-                    <div class="limit-message">访问状态</div>
-                    <p>当前时段访问次数: ${record.count}/${ACCESS_CONFIG.maxVisits}</p>
-                    <p class="reset-info">访问限制将在 ${remainingMinutes} 分钟后重置</p>
-                `;
-            } else {
-                infoDiv.innerHTML = `
-                    <div class="limit-message">访问限制已启用</div>
-                    <p>限制规则: ${ACCESS_CONFIG.timeWindow}小时内最多访问${ACCESS_CONFIG.maxVisits}次</p>
-                `;
-            }
-            
-            document.body.appendChild(infoDiv);
-        }
-        
-        // ==================== 调试信息更新 ====================
-        function updateDebugInfo(message) {
-            const debugInfo = document.getElementById('debugInfo');
-            if (debugInfo) {
-                const time = new Date().toLocaleTimeString();
-                debugInfo.innerHTML += `[${time}] ${message}\n`;
-            }
-        }
-        
-        // ==================== 重置访问计数 ====================
-        function resetAccessCount() {
-            localStorage.removeItem('pdf_access_record');
-            alert('访问计数已重置，页面将刷新。');
-            window.location.reload();
-        }
-        
-        // ==================== 检查仓库结构 ====================
-        function checkRepoStructure() {
-            const currentPath = window.location.pathname;
-            const repoName = currentPath.split('/')[1] || '';
-            updateDebugInfo(`当前路径: ${currentPath}`);
-            updateDebugInfo(`仓库名称: ${repoName || '可能是根域名'}`);
-            
-            // 测试文件是否存在
-            Object.keys(FILE_MAPPING).forEach(filename => {
-                const testUrl = getFileUrl(filename);
-                fetch(testUrl, { method: 'HEAD' })
-                    .then(res => {
-                        updateDebugInfo(`${filename}: ${res.ok ? '✅ 存在' : '❌ 不存在'} (${res.status})`);
-                    })
-                    .catch(() => {
-                        updateDebugInfo(`${filename}: ❌ 请求失败`);
-                    });
-            });
-        }
-        
-        // ==================== 初始化页面 ====================
+        // 初始化页面
         function initPage() {
-            if (!checkAccessLimit()) return;
-            
-            // 添加调试面板
-            const debugPanel = document.createElement('div');
-            debugPanel.className = 'debug-panel';
-            debugPanel.innerHTML = `
-                <h3>🔧 调试面板</h3>
-                <div>
-                    <button onclick="checkRepoStructure()" style="padding:5px 10px; margin-right:10px;">检查文件</button>
-                    <button onclick="resetAccessCount()" style="padding:5px 10px; margin-right:10px;">重置计数</button>
-                    <button onclick="toggleDebug()" style="padding:5px 10px;">切换调试</button>
-                </div>
-                <div class="debug-info" id="debugInfo">等待调试信息...</div>
-            `;
-            document.body.insertBefore(debugPanel, document.querySelector('h1').nextSibling);
-            
             displayFileList();
-            
-            // 延迟检查文件
-            setTimeout(checkRepoStructure, 1000);
-        }
-        
-        function toggleDebug() {
-            window.enableDebug = !window.enableDebug;
-            alert('调试模式: ' + (window.enableDebug ? '开启' : '关闭'));
         }
     </script>
 </head>
@@ -297,7 +87,7 @@
     
     <div class="pdf-list" id="pdfList"></div>
     
-    <div class="preview-container" id="previewArea" style="display:none;">
+    <div class="preview-container" id="previewArea">
         <div class="preview-title" id="previewTitle"></div>
         <iframe id="pdfViewer"></iframe>
     </div>
