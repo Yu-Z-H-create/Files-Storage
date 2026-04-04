@@ -1,70 +1,76 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>PDF 在线预览</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF 文件库</title>
     <style>
-        /* 让页面全屏，去掉滚动条 */
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #333; /* 深色背景 */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
+        h1 { margin-bottom: 30px; color: #333; }
+        .pdf-list { display: grid; gap: 20px; margin-bottom: 40px; }
+        .pdf-item { 
+            border: 1px solid #ddd; 
+            border-radius: 8px; 
+            padding: 20px; 
+            transition: all 0.3s;
+            background: #f9f9f9;
         }
-        
-        /* 让 iframe 占满整个屏幕 */
-        #pdfViewer {
-            width: 100vw;
-            height: 100vh;
-            border: none;
-            display: block;
-        }
-        
-        /* 隐藏顶部标题栏（可选，为了更干净的预览） */
-        .header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            background: #2c3e50;
-            color: white;
-            padding: 5px 10px;
-            z-index: 1000;
-            font-family: sans-serif;
-            font-size: 14px;
-            text-align: center;
-        }
+        .pdf-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
+        .pdf-title { font-size: 18px; color: #0366d6; margin-bottom: 10px; }
+        .pdf-link { display: inline-block; margin-top: 10px; color: #0366d6; text-decoration: none; }
+        .pdf-link:hover { text-decoration: underline; }
+        .preview-container { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; margin-top: 40px; }
+        iframe { width: 100%; height: 600px; border: none; }
+        .preview-title { background: #f5f5f5; padding: 15px; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="header">PDF 预览 - 阳光跑资料库</div>
+    <h1>📚 PDF 文件库</h1>
     
-    <!-- 这里是放 PDF 的地方 -->
-    <iframe id="pdfViewer" src=""></iframe>
+    <div class="pdf-list" id="pdfList">
+        <!-- 这里用JavaScript动态生成 -->
+    </div>
+    
+    <div class="preview-container" id="previewArea" style="display:none;">
+        <div class="preview-title" id="previewTitle"></div>
+        <iframe id="pdfViewer"></iframe>
+    </div>
 
     <script>
-        // 获取浏览器地址栏里的 ?pdf=后面的内容
-        const urlParams = new URLSearchParams(window.location.search);
-        let fileName = urlParams.get('pdf');
-
-        // 获取显示区域
-        const viewer = document.getElementById('pdfViewer');
-
-        if (fileName) {
-            // 1. 进行网址编码（防止中文乱码导致找不到文件）
-            let encodedName = encodeURIComponent(fileName);
-            
-            // 2. 拼凑出正确的 GitHub Raw 直链
-            // 注意：这里必须加上 https://raw.githubusercontent.com/ 前缀
-            let fileUrl = 'https://raw.githubusercontent.com/Yu-Z-H-create/Files-Storage/main/' + encodedName;
-            
-            // 3. 把链接塞进 iframe 里
-            viewer.src = fileUrl;
-        } else {
-            viewer.srcdoc = "<h1 style='color:white;text-align:center;margin-top:20%;'>请在链接后面加上 ?pdf=文件名.pdf</h1>";
+        // 这是你的PDF文件列表
+        const pdfFiles = [
+            "阳光跑学生端操作手册.pdf",   
+            "阳光跑打卡操作指南.pdf" 
+        ];
+        
+        const pdfList = document.getElementById('pdfList');
+        const previewArea = document.getElementById('previewArea');
+        const previewTitle = document.getElementById('previewTitle');
+        const pdfViewer = document.getElementById('pdfViewer');
+        
+        // 生成PDF列表
+        pdfFiles.forEach((filename, index) => {
+            const div = document.createElement('div');
+            div.className = 'pdf-item';
+            div.innerHTML = `
+                <div class="pdf-title">${filename}</div>
+                <div>点击下方链接查看</div>
+                <a href="#" class="pdf-link" onclick="showPDF('${filename}')">在线预览</a>
+                <a href="${filename}" class="pdf-link" target="_blank" style="margin-left:10px;">下载</a>
+            `;
+            pdfList.appendChild(div);
+        });
+        
+        // 显示PDF预览
+        function showPDF(filename) {
+            previewTitle.textContent = `正在预览: ${filename}`;
+            pdfViewer.src = filename;
+            previewArea.style.display = 'block';
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }
+        
+        // 页面加载时默认显示第一个PDF
+        if (pdfFiles.length > 0) {
+            showPDF(pdfFiles[0]);
         }
     </script>
 </body>
