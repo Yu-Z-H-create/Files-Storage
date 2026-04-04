@@ -21,13 +21,194 @@
         .preview-container { border: 1px solid #ddd; border-radius: 8px; overflow: hidden; margin-top: 40px; }
         iframe { width: 100%; height: 600px; border: none; }
         .preview-title { background: #f5f5f5; padding: 15px; font-weight: bold; }
+        
+        /* 访问限制提示样式 */
+        .access-limit { 
+            background: #fff3cd; 
+            border: 1px solid #ffeaa7; 
+            border-radius: 8px; 
+            padding: 20px; 
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .limit-message { color: #856404; margin-bottom: 10px; }
+        .reset-info { font-size: 14px; color: #666; }
+        .hidden { display: none; }
     </style>
+    
+    <script>
+        // ==================== 访问频率限制配置 ====================
+        // 在这里修改限制参数
+        const ACCESS_CONFIG = {
+            maxVisits: 20,          // 最大访问次数（2小时内）
+            timeWindow: 2,          // 时间窗口（小时）
+            enableLimit: true       // 是否启用限制（设为false可关闭限制）
+        };
+        
+        // ==================== 文件名映射表（保护真实文件名） ====================
+        // 这里的键是混淆后的文件名（实际存放在GitHub的文件名）
+        // 值是显示给用户的友好名称
+        const FILE_MAPPING = {
+            "doc_001.pdf": "阳光跑学生端操作手册.pdf",
+            "doc_002.pdf": "阳光跑打卡操作指南.pdf"
+            // 格式: "混淆文件名": "显示文件名"
+            // 你可以继续添加更多文件
+        };
+        
+        // ==================== 访问频率限制逻辑 ====================
+        function checkAccessLimit() {
+            if (!ACCESS_CONFIG.enableLimit) return true;
+            
+            const now = Date.now();
+            const storageKey = 'pdf_access_record';
+            const timeWindowMs = ACCESS_CONFIG.timeWindow * 60 * 60 * 1000;
+            
+            // 读取访问记录
+            let record = JSON.parse(localStorage.getItem(storageKey) || '{"count":0,"firstAccess":0}');
+            
+            // 如果是第一次访问或已超过时间窗口，重置计数
+            if (record.firstAccess === 0 || (now - record.firstAccess) > timeWindowMs) {
+                record = { count: 1, firstAccess: now };
+            } else {
+                record.count++;
+            }
+            
+            // 保存记录
+            localStorage.setItem(storageKey, JSON.stringify(record));
+            
+            // 检查是否超限
+            if (record.count > ACCESS_CONFIG.maxVisits) {
+                const resetTime = new Date(record.firstAccess + timeWindowMs);
+                const remainingTime = Math.ceil((resetTime - now) / 60000); // 剩余分钟数
+                
+                // 显示限制信息
+                const limitHtml = `
+                    <div class="access-limit">
+                        <h3 class="limit-message">访问频率限制</h3>
+                        <p>您在最近${ACCESS_CONFIG.timeWindow}小时内访问次数已超过${ACCESS_CONFIG.maxVisits}次。</p>
+                        <p class="reset-info">剩余等待时间：约${remainingTime}分钟后重置</p>
+                        <p class="reset-info"><small>提示：如需继续访问，请清除浏览器缓存或使用无痕模式</small></p>
+                    </div>
+                `;
+                
+                document.body.innerHTML = limitHtml;
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // ==================== 初始化页面 ====================
+        function initPage() {
+            // 检查访问限制
+            if (!checkAccessLimit()) return;
+            
+            // 显示文件列表
+            displayFileList();
+        }
+        
+        // ==================== 显示文件列表 ====================
+        function displayFileList() {
+            const pdfList = document.getElementById('pdfList');
+            const previewArea = document.getElementById('previewArea');
+            const previewTitle = document.getElementById('previewTitle');
+            const pdfViewer = document.getElementById('pdfViewer');
+            
+            // 从映射表中获取文件列表（显示名称为键，混淆文件名为值）
+            const fileEntries = Object.entries(FILE_MAPPING);
+            
+            // 生成PDF列表（显示给用户的友好名称）
+            fileEntries.forEach(([obfuscatedName, displayName], index) => {
+                const div = document.createElement('div');
+                div.className = 'pdf-item';
+                div.innerHTML = `
+                    <div class="pdf-title">${displayName}</div>
+                    <div>点击下方链接查看</div>
+                    <a href="#" class="pdf-link" onclick="showPDF('${obfuscatedName}', '${displayName}')">在线预览</a>
+                    <a href="${obfuscatedName}" class="pdf-link" target="_blank" style="margin-left:10px;">下载</a>
+                    <div style="font-size:12px; color:#666; margin-top:5px;">
+                        文件ID: ${obfuscatedName}
+                    </div>
+                `;
+                pdfList.appendChild(div);
+            });
+            
+            // 页面加载时默认显示第一个PDF
+            if (fileEntries.length > 0) {
+                const [firstObfuscated, firstDisplay] = fileEntries[0];
+                showPDF(firstObfuscated, firstDisplay);
+            }
+            
+            // 显示访问次数信息
+            showAccessInfo();
+        }
+        
+        // ==================== 显示PDF预览 ====================
+        function showPDF(obfuscatedFilename, displayName) {
+            const previewArea = document.getElementById('previewArea');
+            const previewTitle = document.getElementById('previewTitle');
+            const pdfViewer = document.getElementById('pdfViewer');
+            
+            previewTitle.textContent = `正在预览: ${displayName}`;
+            pdfViewer.src = obfuscatedFilename; // 使用混淆后的文件名
+            previewArea.style.display = 'block';
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            
+            // 更新页面标题
+            document.title = `预览: ${displayName} - PDF 文件库`;
+        }
+        
+        // ==================== 显示访问信息 ====================
+        function showAccessInfo() {
+            if (!ACCESS_CONFIG.enableLimit) return;
+            
+            const storageKey = 'pdf_access_record';
+            const record = JSON.parse(localStorage.getItem(storageKey) || '{"count":0,"firstAccess":0}');
+            
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'access-limit';
+            infoDiv.style.marginTop = '20px';
+            
+            if (record.firstAccess > 0) {
+                const elapsedTime = Date.now() - record.firstAccess;
+                const remainingTime = (ACCESS_CONFIG.timeWindow * 60 * 60 * 1000) - elapsedTime;
+                const remainingMinutes = Math.max(0, Math.ceil(remainingTime / 60000));
+                
+                infoDiv.innerHTML = `
+                    <div class="limit-message">访问状态</div>
+                    <p>当前时段访问次数: ${record.count}/${ACCESS_CONFIG.maxVisits}</p>
+                    <p class="reset-info">访问限制将在 ${remainingMinutes} 分钟后重置</p>
+                `;
+            } else {
+                infoDiv.innerHTML = `
+                    <div class="limit-message">访问限制已启用</div>
+                    <p>限制规则: ${ACCESS_CONFIG.timeWindow}小时内最多访问${ACCESS_CONFIG.maxVisits}次</p>
+                `;
+            }
+            
+            document.body.appendChild(infoDiv);
+        }
+        
+        // ==================== 重置访问计数（调试用） ====================
+        function resetAccessCount() {
+            localStorage.removeItem('pdf_access_record');
+            alert('访问计数已重置，页面将刷新。');
+            window.location.reload();
+        }
+    </script>
 </head>
 <body>
     <h1>📚 PDF 文件库</h1>
     
+    <!-- 重置按钮（调试用，正式使用时可以删除） -->
+    <div style="margin-bottom: 20px; text-align: right;">
+        <button onclick="resetAccessCount()" style="padding: 5px 10px; font-size: 12px; color: #666; background: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">
+            重置访问计数
+        </button>
+    </div>
+    
     <div class="pdf-list" id="pdfList">
-        <!-- 这里用JavaScript动态生成 -->
+        <!-- 文件列表会通过JavaScript动态生成 -->
     </div>
     
     <div class="preview-container" id="previewArea" style="display:none;">
@@ -36,42 +217,8 @@
     </div>
 
     <script>
-        // 这是你的PDF文件列表
-        const pdfFiles = [
-            "阳光跑学生端操作手册.pdf",   
-            "阳光跑打卡操作指南.pdf" 
-        ];
-        
-        const pdfList = document.getElementById('pdfList');
-        const previewArea = document.getElementById('previewArea');
-        const previewTitle = document.getElementById('previewTitle');
-        const pdfViewer = document.getElementById('pdfViewer');
-        
-        // 生成PDF列表
-        pdfFiles.forEach((filename, index) => {
-            const div = document.createElement('div');
-            div.className = 'pdf-item';
-            div.innerHTML = `
-                <div class="pdf-title">${filename}</div>
-                <div>点击下方链接查看</div>
-                <a href="#" class="pdf-link" onclick="showPDF('${filename}')">在线预览</a>
-                <a href="${filename}" class="pdf-link" target="_blank" style="margin-left:10px;">下载</a>
-            `;
-            pdfList.appendChild(div);
-        });
-        
-        // 显示PDF预览
-        function showPDF(filename) {
-            previewTitle.textContent = `正在预览: ${filename}`;
-            pdfViewer.src = filename;
-            previewArea.style.display = 'block';
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-        }
-        
-        // 页面加载时默认显示第一个PDF
-        if (pdfFiles.length > 0) {
-            showPDF(pdfFiles[0]);
-        }
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', initPage);
     </script>
 </body>
 </html>
